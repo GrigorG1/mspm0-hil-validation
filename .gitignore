@@ -4,6 +4,10 @@ __pycache__/
 *.pyc
 .pytest_cache/
 
+# Test artifacts (regenerated each run)
+tests/logs/
+tests/results/
+
 # CCS/Eclipse build artifacts
 Debug/
 Release/
