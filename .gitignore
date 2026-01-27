@@ -1,0 +1,13 @@
+# Python
+tests/venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# CCS/Eclipse build artifacts
+Debug/
+Release/
+.launches/
+*.out
+*.map
+*.d_raw
