@@ -91,16 +91,12 @@ This project implements a lightweight HIL testing framework for the TI MSPM0G350
 - Python 3.10+
 - Virtual environment (recommended)
 
-**Steps:**
+**Steps (in PowerShell 7.0+):**
 ```bash
 cd tests
 python -m venv venv
 
-# Windows
 venv\Scripts\activate
-
-# Linux/Mac
-source venv/bin/activate
 
 pip install -r requirements.txt
 ```
@@ -114,8 +110,6 @@ pytest test_hil_loopback.py --port COM7 --junitxml=results/test_results.xml
 
 **Find your port:**
 - Windows: Device Manager → Ports → "XDS110 Class Application/User UART"
-- Linux: `ls /dev/ttyACM*`
-- Mac: `ls /dev/tty.usbmodem*`
 
 ---
 
