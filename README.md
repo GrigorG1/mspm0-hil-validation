@@ -4,6 +4,8 @@
 
 This project implements a lightweight HIL testing framework for the TI MSPM0G3507 LaunchPad. It demonstrates automated hardware validation by pairing a firmware test agent (running on the MCU) with a Python-based host controller.
 
+![20260130_004017222_iOS](https://github.com/user-attachments/assets/3343fe37-43bb-4755-8683-fd8a977f46e4)
+
 **Key Features:**
 * **Bare-Metal Firmware:** Custom UART command parser written in C (TI Drivers SDK, no SysConfig).
 * **Automated Testing:** Python pytest suite using `pyserial` to drive inputs and verify outputs.
