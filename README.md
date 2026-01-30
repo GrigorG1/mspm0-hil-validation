@@ -56,11 +56,11 @@ This project implements a lightweight HIL testing framework for the TI MSPM0G350
 
 | Cmd | Description | Success Response | Failure Response |
 |-----|-------------|------------------|------------------|
-| `?` | Get firmware identity | `OK MSPM0_HIL_v1.0` | — |
-| `H` | Set PB2 HIGH (3.3V) | `OK` | `E BAD_CMD` |
-| `L` | Set PB2 LOW (0V) | `OK` | `E BAD_CMD` |
-| `R` | Read PB3 state | `OK 0` or `OK 1` | `E BAD_CMD` |
-| `S` | Get status | `OK <uptime_ms> <cmd_count>` | `E BAD_CMD` |
+| `?` | Get firmware identity | `OK MSPM0_HIL_v1.0` | - |
+| `H` | Set PB2 HIGH (3.3V) | `OK` | - |
+| `L` | Set PB2 LOW (0V) | `OK` | - |
+| `R` | Read PB3 state | `OK 0` or `OK 1` | - |
+| `S` | Get status | `OK <uptime_ms> <cmd_count>` | - |
 
 ---
 
@@ -68,16 +68,20 @@ This project implements a lightweight HIL testing framework for the TI MSPM0G350
 
 ### 1. Flash the Firmware
 
-**Prerequisites:**
-- [Code Composer Studio](https://www.ti.com/tool/CCSTUDIO) (CCS) 12.x or CCS Theia
-- [MSPM0 SDK](https://www.ti.com/tool/MSPM0-SDK) 2.09.00.01 or later
+**Prerequisites: (other versions may be suitable as well, however these are the only tested versions)**
+- [Code Composer Studio](https://www.ti.com/tool/CCSTUDIO) CCS Theia 20.04.0
+- [MSPM0 SDK](https://www.ti.com/tool/MSPM0-SDK) 2.09.00.01
 
 **Steps:**
 1. Open CCS and import the project from `firmware/`
 2. Connect the LaunchPad via USB
-3. Build the project (Hammer icon)
-4. Flash and debug (Green Bug icon)
-5. Open a serial terminal to verify: you should see `HIL_Loopback_v1.0: Ready`
+3. Build the project
+4. Flash and debug
+5. Open a serial terminal to verify: you should see `MSPM0_HIL_v1.0: Ready (Type H/L/R/S)`
+
+**Build/flash without CCS (optional):**
+- This repo does not include a standalone makefile; the supported build flow is CCS/Theia import.
+- You can still flash the built `.out`/`.hex` as preferred .
 
 ### 2. Run the Tests
 
@@ -101,6 +105,7 @@ pip install -r requirements.txt
 
 **Run all tests:**
 ```bash
+mkdir -p results
 pytest test_hil_loopback.py --port COM7 --junitxml=results/test_results.xml
 ```
 (Replace `COM7` with your actual serial port)
@@ -173,14 +178,18 @@ test_hil_loopback.py::TestErrorHandling::test_device_responds_after_error PASSED
 
 ### Log File (excerpt)
 ```
-2025-01-27 14:30:22,456 | INFO     | Logging to: logs/hil_test_20250127_143022.log
-2025-01-27 14:30:22,567 | INFO     | Connecting to COM7...
-2025-01-27 14:30:22,678 | INFO     | Connected successfully
-2025-01-27 14:30:22,789 | INFO     | TEST: Identity check
-2025-01-27 14:30:22,890 | INFO     |   Response: MSPM0_HIL_v1.0
-2025-01-27 14:30:23,001 | INFO     | TEST: Set HIGH, read HIGH
-2025-01-27 14:30:23,112 | INFO     |   H command: OK
-2025-01-27 14:30:23,223 | INFO     |   R command: 1
+2026-01-27 14:41:54,264 | INFO     | Logging to: logs\hil_test_20260127_144154.log
+2026-01-27 14:41:54,264 | INFO     | Connecting to COM7...
+2026-01-27 14:41:54,365 | INFO     | Connected successfully
+2026-01-27 14:41:54,366 | INFO     | TEST: Identity check
+2026-01-27 14:41:54,368 | INFO     |   Response: MSPM0_HIL_v1.0
+2026-01-27 14:41:54,370 | INFO     | Disconnecting...
+2026-01-27 14:41:54,371 | INFO     | Connecting to COM7...
+2026-01-27 14:41:54,474 | INFO     | Connected successfully
+2026-01-27 14:41:54,474 | INFO     | TEST: Set HIGH, read HIGH
+2026-01-27 14:41:54,484 | INFO     |   H command: OK
+2026-01-27 14:41:54,485 | INFO     |   R command: 1
+2026-01-27 14:41:54,486 | INFO     | Disconnecting...
 ```
 
 See `tests/sample_output/` for complete example files.

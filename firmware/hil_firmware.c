@@ -2,7 +2,7 @@
  * ======== hil_firmware.c ========
  * Project 2: HIL Validation Framework (v1.0)
  * Manual Configuration (No SysConfig)
- * FIXED for MSPM0 SDK 2.09 (Correct GPIO Init)
+ * Bare-metal firmware for MSPM0 SDK 2.09+
  */
 
 #include <stdint.h>
@@ -139,7 +139,7 @@ int main(void)
 {
     UART_Handle uart;
     UART_Params uartParams;
-    const char  echoPrompt[] = "HIL_Loopback_v1.0: Ready (Type H/L/R/S)\r\n";
+    const char  echoPrompt[] = "MSPM0_HIL_v1.0: Ready (Type H/L/R/S)\n";
     char        input;
     uint32_t    pinStatus;
     char        responseBuf[64];

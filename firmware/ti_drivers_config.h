@@ -39,8 +39,6 @@
 #ifndef ti_drivers_config_h
 #define ti_drivers_config_h
 
-#include <stdio.h>
-
 #include <ti/devices/msp/msp.h>
 #include <ti/driverlib/dl_gpio.h>
 #include <ti/drivers/UART.h>

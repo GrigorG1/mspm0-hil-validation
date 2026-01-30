@@ -14,8 +14,8 @@ from hil_client import HILClient
 
 # ============ Configuration ============
 
-# Default COM port - override with: pytest --port COM5
-DEFAULT_PORT = "COM3"
+# Default COM port - override with: pytest --port COM7
+DEFAULT_PORT = "COM7"
 
 
 def pytest_addoption(parser):
