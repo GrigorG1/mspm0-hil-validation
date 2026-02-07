@@ -35,9 +35,8 @@ class HILClient:
         """
         Open serial connection and flush any stale data.
         
-        Why flush? When the board resets, it sends a startup message.
-        If we don't clear it, our first read might get that instead of
-        the response we're expecting.
+        When the board resets, it sends a startup message so we clear it in order to 
+        get the response we're expecting.
         """
         self.serial = serial.Serial(
             port=self.port,
@@ -75,19 +74,16 @@ class HILClient:
         # Clear any pending input before sending
         self.serial.reset_input_buffer()
         
-        # Send command with newline terminator
-        # encode() converts string to bytes (serial ports send bytes, not strings)
+        # Send command with newline terminator converted to bytes
         self.serial.write(f"{cmd}\n".encode())
         
-        # Read response line
-        # readline() reads until \n or timeout
+        # Read response line until \n or timeout
         response = self.serial.readline()
         
         if not response:
             raise TimeoutError(f"No response to command '{cmd}' within {self.timeout}s")
         
-        # decode() converts bytes back to string
-        # strip() removes whitespace/newlines from both ends
+        # Decode the response and trim
         return response.decode().strip()
     
     def parse_response(self, response: str) -> Tuple[bool, str]:

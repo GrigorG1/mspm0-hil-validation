@@ -1,9 +1,5 @@
 """
 Pytest configuration and fixtures for HIL tests.
-
-Fixtures are reusable setup/teardown functions. When a test function
-has a parameter matching a fixture name, pytest automatically calls
-the fixture and passes its return value to the test.
 """
 
 import pytest
@@ -38,11 +34,6 @@ def pytest_addoption(parser):
 def setup_logging(log_dir: str = "logs") -> logging.Logger:
     """
     Configure logging to both console and timestamped file.
-    
-    Why log to file? 
-    - Tests might run unattended (CI/CD)
-    - You need a record of what happened for debugging failures
-    - Recruiters can see example output without running the tests
     """
     # Create logs directory if it doesn't exist
     os.makedirs(log_dir, exist_ok=True)
@@ -84,9 +75,6 @@ def setup_logging(log_dir: str = "logs") -> logging.Logger:
 def logger():
     """
     Provide a configured logger to all tests.
-    
-    scope="session" means: create once, reuse for all tests.
-    (vs scope="function" which recreates for each test)
     """
     return setup_logging()
 
@@ -95,8 +83,6 @@ def logger():
 def port(request):
     """
     Get the serial port from command line or use default.
-    
-    request.config.getoption() reads the --port argument.
     """
     return request.config.getoption("--port")
 
@@ -105,14 +91,6 @@ def port(request):
 def client(port, logger):
     """
     Provide a connected HIL client to each test.
-    
-    scope="function" means: create fresh connection for each test.
-    This prevents state from one test affecting another.
-    
-    The 'yield' keyword makes this a "generator fixture":
-    1. Code before yield runs BEFORE the test
-    2. The yielded value is passed to the test
-    3. Code after yield runs AFTER the test (cleanup)
     """
     logger.info(f"Connecting to {port}...")
     
@@ -121,7 +99,7 @@ def client(port, logger):
     
     logger.info("Connected successfully")
     
-    yield hil  # Test runs here, with 'hil' as the client
+    yield hil  # Run the test here, with 'hil' as the client
     
     # Cleanup after test completes
     logger.info("Disconnecting...")

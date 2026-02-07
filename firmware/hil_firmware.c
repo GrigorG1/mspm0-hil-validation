@@ -1,6 +1,6 @@
 /*
  * ======== hil_firmware.c ========
- * Project 2: HIL Validation Framework (v1.0)
+ * HIL Validation Framework (v1.0)
  * Manual Configuration (No SysConfig)
  * Bare-metal firmware for MSPM0 SDK 2.09+
  */
@@ -13,7 +13,7 @@
 
 /*
  * ================ HIL HARDWARE DEFINITIONS ================
- * We are using Header J1 pins:
+ * We use Header J1 pins:
  * - PB2 (Pin 9)  -> OUTPUT (Stimulus)
  * - PB3 (Pin 10) -> INPUT  (Measurement)
  */
@@ -39,13 +39,12 @@ uint32_t g_cmd_count = 0;
 const DL_TimerG_ClockConfig gCommonTimerClockConfig = {
     .clockSel    = DL_TIMER_CLOCK_BUSCLK,
     .divideRatio = DL_TIMER_CLOCK_DIVIDE_1,
-    .prescale    = 31  // 32MHz / 32 = 1MHz tick
+    .prescale    = 31
 };
 
 // TimerG0 Interrupt Handler (Runs every 1ms)
 void TIMG0_IRQHandler(void)
 {
-    // Clear the interrupt status so it can fire again
     DL_TimerG_clearInterruptStatus(TIMG0, DL_TIMER_INTERRUPT_ZERO_EVENT);
     g_uptime_ms++;
 }
@@ -80,39 +79,36 @@ int ultoa_simple(uint32_t value, char *buf) {
  */
 void HIL_Hardware_Init(void)
 {
-    // 1. TIMG0 uses BUSCLK (32MHz) with prescale for 1ms tick.
-
-    // 2. Enable Power to Port A (Required for UART)
+    // Enable Power to Port A (Required for UART)
     DL_GPIO_reset(GPIOA);
     DL_GPIO_enablePower(GPIOA);
 
-    // 3. Enable Power to Port B (Required for HIL Pins)
+    // Enable Power to Port B (Required for HIL Pins)
     DL_GPIO_reset(GPIO_HIL_PORT);
     DL_GPIO_enablePower(GPIO_HIL_PORT);
-    
-    // Simple loop delay to let power stabilize
-    volatile int i;
-    for(i=0; i<1000; i++); 
 
-    // 4. Configure PB2 as OUTPUT (Initial Value: LOW)
+    // Configure TIMG0 for 1ms uptime counter
+    DL_TimerG_reset(TIMG0);
+    DL_TimerG_enablePower(TIMG0);
+    
+    // TODO: TRM says after PWREN ENABLE|KEY you must wait >= 4 ULPCLK cycles
+	// before touching peripheral regs; this loop is a crude safety margin.
+	// Consider replacing with a deterministic 4‑ULPCLK delay or another
+	// option. (from https://www.ti.com/lit/ug/slau846/slau846.pdf)
+    volatile int i;
+    for(i=0; i<1000; i++);
+
+    // Configure PB2 as OUTPUT (Initial Value: LOW)
     DL_GPIO_initDigitalOutput(GPIO_HIL_OUT_IOMUX);
     DL_GPIO_clearPins(GPIO_HIL_PORT, GPIO_HIL_OUT_PIN);
     DL_GPIO_enableOutput(GPIO_HIL_PORT, GPIO_HIL_OUT_PIN);
 
-    // 5. Configure PB3 as INPUT with PULL-DOWN resistor
-    //    SDK 2.09 Signature: (IOMUX, Inversion, Resistor, Hysteresis, Wakeup)
+    // Configure PB3 as INPUT with PULL-DOWN resistor
     DL_GPIO_initDigitalInputFeatures(GPIO_HIL_IN_IOMUX,
                                      DL_GPIO_INVERSION_DISABLE,
                                      DL_GPIO_RESISTOR_PULL_DOWN,
                                      DL_GPIO_HYSTERESIS_DISABLE,
                                      DL_GPIO_WAKEUP_DISABLE);
-
-    // 6. Configure TIMG0 for 1ms uptime counter
-    DL_TimerG_reset(TIMG0);
-    DL_TimerG_enablePower(TIMG0);
-    
-    // Wait for timer power to stabilize
-    for(i=0; i<1000; i++);
 
     DL_TimerG_setClockConfig(TIMG0,
         (DL_TimerG_ClockConfig *) &gCommonTimerClockConfig);
@@ -132,9 +128,6 @@ void HIL_Hardware_Init(void)
     __enable_irq();
 }
 
-/*
- * ======== mainThread ========
- */
 int main(void)
 {
     UART_Handle uart;
@@ -149,10 +142,10 @@ int main(void)
     size_t      bytesRead;
     size_t      bytesWritten;
 
-    /* Initialize Peripherals */
+    // Initialize Peripherals
     HIL_Hardware_Init();
     
-    /* Initialize UART Params */
+    // Initialize UART Params
     UART_Params_init(&uartParams);
     uartParams.baudRate = 115200; 
 
