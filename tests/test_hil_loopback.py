@@ -15,9 +15,6 @@ class TestIdentity:
     def test_identity_returns_correct_version(self, client, logger):
         """
         Verify device responds with correct firmware identifier.
-        
-        This is typically the first test - if this fails, nothing else
-        will work (wrong device, bad connection, etc.)
         """
         logger.info("TEST: Identity check")
         
@@ -150,8 +147,6 @@ class TestErrorHandling:
     def test_device_responds_after_error(self, client, logger):
         """
         Verify device still works after receiving invalid command.
-        
-        A robust parser shouldn't crash or hang on bad input.
         """
         logger.info("TEST: Recovery after error")
         
