@@ -11,6 +11,7 @@
 #include <ti/driverlib/dl_timerg.h>
 #include "ti_drivers_config.h"
 #include "led.h"
+#include "adc.h"
 
 /*
  * ================ HIL HARDWARE DEFINITIONS ================
@@ -146,6 +147,7 @@ int main(void)
     // Initialize Peripherals
     HIL_Hardware_Init();
     led_init();
+    adc_init();
 
     // Initialize UART Params
     UART_Params_init(&uartParams);
@@ -232,6 +234,18 @@ int main(void)
                 g_cmd_count++;
                 led_all_off();
                 UART_write(uart, "OK OFF\n", 7, &bytesWritten);
+            }
+            else if (input == 'V') {
+                // TEMPORARY ADC TEST: read potentiometer, reply "OK <raw>"
+                g_cmd_count++;
+                uint16_t raw = adc_read();
+                idx = 0;
+                responseBuf[idx++] = 'O';
+                responseBuf[idx++] = 'K';
+                responseBuf[idx++] = ' ';
+                idx += ultoa_simple(raw, &responseBuf[idx]);
+                responseBuf[idx++] = '\n';
+                UART_write(uart, responseBuf, idx, &bytesWritten);
             }
             else if (input == '\r' || input == '\n') {
                 // Ignore newlines
