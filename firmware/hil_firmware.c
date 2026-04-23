@@ -10,6 +10,7 @@
 #include <ti/drivers/GPIO.h>
 #include <ti/driverlib/dl_timerg.h>
 #include "ti_drivers_config.h"
+#include "led.h"
 
 /*
  * ================ HIL HARDWARE DEFINITIONS ================
@@ -144,7 +145,8 @@ int main(void)
 
     // Initialize Peripherals
     HIL_Hardware_Init();
-    
+    led_init();
+
     // Initialize UART Params
     UART_Params_init(&uartParams);
     uartParams.baudRate = 115200; 
@@ -204,8 +206,35 @@ int main(void)
                 g_cmd_count++;
                 UART_write(uart, "OK MSPM0_HIL_v1.0\n", 18, &bytesWritten);
             }
+            else if (input == '1') {
+                // TEMPORARY LED TEST: green only
+                g_cmd_count++;
+                led_all_off();
+                led_set(LED_GREEN, true);
+                UART_write(uart, "OK GREEN\n", 9, &bytesWritten);
+            }
+            else if (input == '2') {
+                // TEMPORARY LED TEST: yellow only
+                g_cmd_count++;
+                led_all_off();
+                led_set(LED_YELLOW, true);
+                UART_write(uart, "OK YELLOW\n", 10, &bytesWritten);
+            }
+            else if (input == '3') {
+                // TEMPORARY LED TEST: red only
+                g_cmd_count++;
+                led_all_off();
+                led_set(LED_RED, true);
+                UART_write(uart, "OK RED\n", 7, &bytesWritten);
+            }
+            else if (input == '0') {
+                // TEMPORARY LED TEST: all off
+                g_cmd_count++;
+                led_all_off();
+                UART_write(uart, "OK OFF\n", 7, &bytesWritten);
+            }
             else if (input == '\r' || input == '\n') {
-                // Ignore newlines 
+                // Ignore newlines
             }
             else {
                 // Unknown Command
