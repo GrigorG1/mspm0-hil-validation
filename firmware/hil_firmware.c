@@ -7,11 +7,13 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include <stdbool.h>
 #include <ti/drivers/GPIO.h>
 #include <ti/driverlib/dl_timerg.h>
 #include "ti_drivers_config.h"
 #include "led.h"
 #include "adc.h"
+#include "uart_io.h"
 
 /*
  * ================ HIL HARDWARE DEFINITIONS ================
@@ -33,9 +35,29 @@
 
 #define TIMER_LOAD_VALUE        (999) // 1MHz / 1000 = 1ms (after prescale)
 
+/*
+ * ================ SENSOR MONITOR MODE ================
+ * Software-defined mode flag. UART I/O (see uart_io.c) is non-blocking, so
+ * the main loop polls for characters and runs the sensor task concurrently.
+ * HIL commands (H/L/R/S/?) still work in either mode.
+ */
+typedef enum {
+    MODE_HIL = 0,
+    MODE_SENSOR
+} mode_t;
+
+// Thresholds split the 12-bit ADC range (0..4095) into three equal bands.
+#define SENSOR_LOW_THRESH   (1365)
+#define SENSOR_HIGH_THRESH  (2730)
+#define SENSOR_PERIOD_MS    (200)
+
 // Globals for Status Command
 volatile uint32_t g_uptime_ms = 0;
 uint32_t g_cmd_count = 0;
+
+// Sensor-monitor state
+volatile mode_t g_mode = MODE_HIL;
+uint32_t g_last_sample_ms = 0;
 
 // Timer Clock Configuration: 32MHz BUSCLK / 32 (prescale) = 1MHz tick
 const DL_TimerG_ClockConfig gCommonTimerClockConfig = {
@@ -73,6 +95,30 @@ int ultoa_simple(uint32_t value, char *buf) {
         buf[len++] = temp[--i];
     }
     return len;
+}
+
+// Minimal Helper: Copies a null-terminated literal into buf at idx, returns
+// new idx. Keeps the stdio-free style consistent with ultoa_simple.
+static int append_str(char *buf, int idx, const char *s) {
+    while (*s) {
+        buf[idx++] = *s++;
+    }
+    return idx;
+}
+
+// Map raw 12-bit ADC reading to a status label.
+static const char *sensor_status(uint16_t raw) {
+    if (raw < SENSOR_LOW_THRESH)  return "NORMAL";
+    if (raw < SENSOR_HIGH_THRESH) return "WARNING";
+    return "ALERT";
+}
+
+// Drive exactly one LED based on the current reading.
+static void sensor_update_leds(uint16_t raw) {
+    led_all_off();
+    if (raw < SENSOR_LOW_THRESH)       led_set(LED_GREEN,  true);
+    else if (raw < SENSOR_HIGH_THRESH) led_set(LED_YELLOW, true);
+    else                               led_set(LED_RED,    true);
 }
 
 /*
@@ -132,42 +178,34 @@ void HIL_Hardware_Init(void)
 
 int main(void)
 {
-    UART_Handle uart;
-    UART_Params uartParams;
-    const char  echoPrompt[] = "MSPM0_HIL_v1.0: Ready (Type H/L/R/S)\n";
+    const char  echoPrompt[] = "MSPM0_HIL_v1.1: Ready (H/L/R/S/?, M=mode toggle)\n";
     char        input;
     uint32_t    pinStatus;
     char        responseBuf[64];
     int         idx;
-    
-    // Variables for 4-argument SDK calls
-    size_t      bytesRead;
-    size_t      bytesWritten;
 
     // Initialize Peripherals
     HIL_Hardware_Init();
     led_init();
     adc_init();
+    uart_io_init();
 
-    // Initialize UART Params
-    UART_Params_init(&uartParams);
-    uartParams.baudRate = 115200; 
+    // Send startup banner (exclude '\0').
+    uart_io_write(echoPrompt, sizeof(echoPrompt) - 1);
 
-    uart = UART_open(CONFIG_UART_0, &uartParams);
-
-    if (uart == NULL) {
-        while (1); // Trap if UART fails
-    }
-
-    // Send startup message (exclude '\0')
-    UART_write(uart, echoPrompt, sizeof(echoPrompt) - 1, &bytesWritten); 
-
-    /* Main Loop */
+    /* Main Super-Loop
+     *
+     * Runs two concurrent "tasks":
+     *   1. Non-blocking UART poll — handle any single character that arrived.
+     *   2. Sensor-mode periodic task — every SENSOR_PERIOD_MS, sample ADC,
+     *      update the indicator LED, and print a telemetry line.
+     *
+     * Command handling works in both modes; 'M' toggles between them.
+     */
     while (1) {
-        // Read 1 character (Blocking)
-        UART_read(uart, &input, 1, &bytesRead);
-
-        if (bytesRead > 0) {
+        // (1) Non-blocking RX check. uart_io_try_read returns immediately;
+        // if a byte arrived since last check, it's returned here.
+        if (uart_io_try_read(&input)) {
             if (input == 'S') {
                 // Status Command: OK <uptime> <count>
                 g_cmd_count++;
@@ -179,73 +217,50 @@ int main(void)
                 responseBuf[idx++] = ' ';
                 idx += ultoa_simple(g_cmd_count, &responseBuf[idx]);
                 responseBuf[idx++] = '\n';
-                
-                UART_write(uart, responseBuf, idx, &bytesWritten);
+
+                uart_io_write(responseBuf, idx);
             }
             else if (input == 'H') {
                 // Set Output HIGH
                 g_cmd_count++;
                 DL_GPIO_setPins(GPIO_HIL_PORT, GPIO_HIL_OUT_PIN);
-                UART_write(uart, "OK\n", 3, &bytesWritten);
+                uart_io_write("OK\n", 3);
             }
             else if (input == 'L') {
                 g_cmd_count++;
                 // Set Output LOW
                 DL_GPIO_clearPins(GPIO_HIL_PORT, GPIO_HIL_OUT_PIN);
-                UART_write(uart, "OK\n", 3, &bytesWritten);
+                uart_io_write("OK\n", 3);
             }
             else if (input == 'R') {
                 // Read Input
                 g_cmd_count++;
                 pinStatus = DL_GPIO_readPins(GPIO_HIL_PORT, GPIO_HIL_IN_PIN);
                 if (pinStatus > 0) {
-                    UART_write(uart, "OK 1\n", 5, &bytesWritten);
+                    uart_io_write("OK 1\n", 5);
                 } else {
-                    UART_write(uart, "OK 0\n", 5, &bytesWritten);
+                    uart_io_write("OK 0\n", 5);
                 }
             }
             else if (input == '?') {
                 g_cmd_count++;
-                UART_write(uart, "OK MSPM0_HIL_v1.0\n", 18, &bytesWritten);
+                uart_io_write("OK MSPM0_HIL_v1.1\n", 18);
             }
-            else if (input == '1') {
-                // TEMPORARY LED TEST: green only
+            else if (input == 'M') {
+                // Toggle between HIL and SENSOR mode.
                 g_cmd_count++;
-                led_all_off();
-                led_set(LED_GREEN, true);
-                UART_write(uart, "OK GREEN\n", 9, &bytesWritten);
-            }
-            else if (input == '2') {
-                // TEMPORARY LED TEST: yellow only
-                g_cmd_count++;
-                led_all_off();
-                led_set(LED_YELLOW, true);
-                UART_write(uart, "OK YELLOW\n", 10, &bytesWritten);
-            }
-            else if (input == '3') {
-                // TEMPORARY LED TEST: red only
-                g_cmd_count++;
-                led_all_off();
-                led_set(LED_RED, true);
-                UART_write(uart, "OK RED\n", 7, &bytesWritten);
-            }
-            else if (input == '0') {
-                // TEMPORARY LED TEST: all off
-                g_cmd_count++;
-                led_all_off();
-                UART_write(uart, "OK OFF\n", 7, &bytesWritten);
-            }
-            else if (input == 'V') {
-                // TEMPORARY ADC TEST: read potentiometer, reply "OK <raw>"
-                g_cmd_count++;
-                uint16_t raw = adc_read();
-                idx = 0;
-                responseBuf[idx++] = 'O';
-                responseBuf[idx++] = 'K';
-                responseBuf[idx++] = ' ';
-                idx += ultoa_simple(raw, &responseBuf[idx]);
-                responseBuf[idx++] = '\n';
-                UART_write(uart, responseBuf, idx, &bytesWritten);
+                if (g_mode == MODE_HIL) {
+                    g_mode = MODE_SENSOR;
+                    // Underflow is intentional: forces the (now - last) >=
+                    // period check to fire on the very next iteration, so
+                    // the user sees telemetry immediately.
+                    g_last_sample_ms = g_uptime_ms - SENSOR_PERIOD_MS;
+                    uart_io_write("OK SENSOR\n", 10);
+                } else {
+                    g_mode = MODE_HIL;
+                    led_all_off(); // don't leave an indicator LED on in HIL mode
+                    uart_io_write("OK HIL\n", 7);
+                }
             }
             else if (input == '\r' || input == '\n') {
                 // Ignore newlines
@@ -253,8 +268,32 @@ int main(void)
             else {
                 // Unknown Command
                 g_cmd_count++;
-                UART_write(uart, "E BAD_CMD\n", 10, &bytesWritten);
+                uart_io_write("E BAD_CMD\n", 10);
             }
+        }
+
+        // (2) Sensor-mode periodic task. Only runs in SENSOR mode. Uses
+        // unsigned subtraction so wraparound of g_uptime_ms is handled
+        // correctly (uint32_t at 1ms ticks wraps after ~49 days).
+        if (g_mode == MODE_SENSOR &&
+            (g_uptime_ms - g_last_sample_ms) >= SENSOR_PERIOD_MS) {
+
+            g_last_sample_ms = g_uptime_ms;
+
+            uint16_t raw = adc_read();
+            sensor_update_leds(raw);
+
+            // Format: "[<uptime>ms] ADC: <raw> | Status: <label>\n"
+            idx = 0;
+            responseBuf[idx++] = '[';
+            idx += ultoa_simple(g_uptime_ms, &responseBuf[idx]);
+            idx  = append_str(responseBuf, idx, "ms] ADC: ");
+            idx += ultoa_simple(raw, &responseBuf[idx]);
+            idx  = append_str(responseBuf, idx, " | Status: ");
+            idx  = append_str(responseBuf, idx, sensor_status(raw));
+            responseBuf[idx++] = '\n';
+
+            uart_io_write(responseBuf, idx);
         }
     }
 }

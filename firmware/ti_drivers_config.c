@@ -86,7 +86,7 @@ const UART_Config UART_config[CONFIG_UART_COUNT] = {
     },
 };
 
-void UART0_IRQHandler(void)
-{
-    UARTMSP_interruptHandler((UART_Handle) &UART_config[0]);
-}
+// Note: UART0_IRQHandler is provided by uart_io.c. We replaced the TI Drivers
+// UART with direct DriverLib because the SDK's UART_readTimeout(...,0) doesn't
+// actually return immediately on MSPM0 — it pends WAIT_FOREVER inside
+// UART_readBufferedMode. See uart_io.c for the bypass.
