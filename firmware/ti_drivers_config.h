@@ -32,7 +32,7 @@
 
  /*
  * ======== ti_drivers_config.h ========
- * Configured for Project 2: HIL Validation Framework
+ * Configured for HIL Validation Framework
  * - UART0 (USB Backchannel)
  */
 

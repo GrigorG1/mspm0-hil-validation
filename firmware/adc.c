@@ -5,17 +5,18 @@
  * Design notes:
  * - Uses ADC0, channel 2, 12-bit result, VDDA (~3.3V) as reference.
  * - Polling-based completion (no ISR). Simpler than interrupt-driven and
- *   sufficient for a 200 ms sampling cadence. If we ever move to timer-driven
- *   sampling at a higher rate, switching to interrupts is a small change.
- * - Pin PA25 does not need any IOMUX configuration: its default "unconnected"
- *   digital state is equivalent to analog mode, and the ADC peripheral routes
- *   channel 2 internally.
+ *   sufficient for a 200 ms sampling cadence for now.
+ * - Pin PA25 needs no IOMUX configuration: its default unconnected state
+ *   leaves the pad in analog mode, and the ADC routes channel 2 to PA25
+ *   through an on-die analog mux. The potentiometer itself is external,
+ *   wired to PA25 via header pin J1.2.
  */
 
 #include <ti/driverlib/dl_adc12.h>
 #include "adc.h"
 
-// Potentiometer is on ADC0, input channel 2 (wired to PA25 inside the chip).
+// External potentiometer on PA25; ADC0 reads it via channel 2 (PA25 is the
+// channel-2 input pin on this device).
 #define POT_ADC_INST       ADC0
 #define POT_ADC_CHANNEL    DL_ADC12_INPUT_CHAN_2
 #define POT_ADC_REF        DL_ADC12_REFERENCE_VOLTAGE_VDDA
@@ -40,7 +41,6 @@ void adc_init(void)
     DL_ADC12_enablePower(POT_ADC_INST);
 
     // TRM: wait >= 4 ULPCLK cycles after power-enable before touching regs.
-    // Matching the existing firmware's crude-delay style.
     volatile int i;
     for (i = 0; i < 1000; i++);
 

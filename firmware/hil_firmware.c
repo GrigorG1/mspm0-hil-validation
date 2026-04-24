@@ -1,14 +1,19 @@
 /*
  * ======== hil_firmware.c ========
- * HIL Validation Framework (v1.0)
- * Manual Configuration (No SysConfig)
- * Bare-metal firmware for MSPM0 SDK 2.09+
+ * HIL Validation Framework (v1.1) + Sensor Monitor extension.
+ * Manual Configuration (No SysConfig). Bare-metal firmware for MSPM0 SDK 2.09+.
+ *
+ * v1.0 — single-character HIL command interface (H/L/R/S/?), GPIO loopback.
+ * v1.1 — adds an 'M' mode-toggle command that puts the firmware into a
+ *        sensor-monitor mode: samples an external potentiometer via ADC,
+ *        drives a 3-LED indicator (green/yellow/red) based on thresholds,
+ *        and prints telemetry over UART every SENSOR_PERIOD_MS. HIL commands
+ *        still work in either mode. Non-blocking UART I/O in uart_io.c.
  */
 
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
-#include <ti/drivers/GPIO.h>
 #include <ti/driverlib/dl_timerg.h>
 #include "ti_drivers_config.h"
 #include "led.h"
@@ -17,7 +22,7 @@
 
 /*
  * ================ HIL HARDWARE DEFINITIONS ================
- * We use Header J1 pins:
+ * Use Header J1 pins:
  * - PB2 (Pin 9)  -> OUTPUT (Stimulus)
  * - PB3 (Pin 10) -> INPUT  (Measurement)
  */
@@ -73,7 +78,7 @@ void TIMG0_IRQHandler(void)
     g_uptime_ms++;
 }
 
-// Minimal Helper: Converts uint32 to string, returns length
+// Converts uint32 to string, returns length
 // (Avoids overhead of stdio.h / sprintf)
 int ultoa_simple(uint32_t value, char *buf) {
     char temp[12];
@@ -97,8 +102,8 @@ int ultoa_simple(uint32_t value, char *buf) {
     return len;
 }
 
-// Minimal Helper: Copies a null-terminated literal into buf at idx, returns
-// new idx. Keeps the stdio-free style consistent with ultoa_simple.
+// Copies a null-terminated literal into buf at idx, returns new idx. Keeps the
+// stdio-free style consistent with ultoa_simple.
 static int append_str(char *buf, int idx, const char *s) {
     while (*s) {
         buf[idx++] = *s++;
@@ -139,12 +144,9 @@ void HIL_Hardware_Init(void)
     DL_TimerG_reset(TIMG0);
     DL_TimerG_enablePower(TIMG0);
     
-    // TODO: TRM says after PWREN ENABLE|KEY you must wait >= 4 ULPCLK cycles
-	// before touching peripheral regs; this loop is a crude safety margin.
-	// Consider replacing with a deterministic 4‑ULPCLK delay or another
-	// option. (from https://www.ti.com/lit/ug/slau846/slau846.pdf)
+    // TRM: wait >= 4 ULPCLK cycles after PWREN before touching regs.
     volatile int i;
-    for(i=0; i<1000; i++);
+    for (i = 0; i < 1000; i++);
 
     // Configure PB2 as OUTPUT (Initial Value: LOW)
     DL_GPIO_initDigitalOutput(GPIO_HIL_OUT_IOMUX);

@@ -21,7 +21,7 @@ class TestIdentity:
         identity = client.get_identity()
         logger.info(f"  Response: {identity}")
         
-        assert identity == "MSPM0_HIL_v1.0", f"Unexpected identity: {identity}"
+        assert identity == "MSPM0_HIL_v1.1", f"Unexpected identity: {identity}"
 
 
 class TestGPIOLoopback:
@@ -159,7 +159,7 @@ class TestErrorHandling:
         identity = client.get_identity()
         logger.info(f"  Identity after errors: {identity}")
         
-        assert identity == "MSPM0_HIL_v1.0", "Device not responding after error"
+        assert identity == "MSPM0_HIL_v1.1", "Device not responding after error"
 
 
 class TestWireDisconnected:

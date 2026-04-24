@@ -69,8 +69,7 @@ void uart_io_init(void)
     DL_UART_configBaudRate(UART0, UART_IO_CLK_HZ, UART_IO_BAUD);
 
     // 5. FIFOs on. RX threshold = 1 entry so we get an interrupt per byte
-    //    (minimum latency, fine at 115200 baud). TX threshold irrelevant
-    //    here because we don't use TX interrupts.
+    //    (minimum latency, fine at 115200 baud).
     DL_UART_enableFIFOs(UART0);
     DL_UART_setRXFIFOThreshold(UART0, DL_UART_RX_FIFO_LEVEL_ONE_ENTRY);
     DL_UART_setTXFIFOThreshold(UART0, DL_UART_TX_FIFO_LEVEL_EMPTY);

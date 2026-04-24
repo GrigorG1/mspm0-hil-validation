@@ -1,13 +1,11 @@
 /*
  * ======== led.c ========
- * LED driver: green on PA8, yellow on PB24, red on PB9.
+ * LED driver: green, yellow and red on the pins below.
  * All three are active-high (GPIO high = LED on).
  * Port A and Port B power must already be enabled (HIL_Hardware_Init does this).
  *
- * Note: PA26 was originally considered for green but the LP-MSPM0G3507 routes
- * it through an onboard OPA/analog path; the chip pin does not drive header J1.5
- * without a board-level jumper change. PA8 (J1.4) is a plain digital pin with
- * no analog alternates, making it a safer choice.
+ * Note: PA26 was tried but it did not work easily and for the sake of time
+ * switched to PA8.
  */
 
 #include <ti/driverlib/dl_gpio.h>
@@ -30,17 +28,17 @@
 
 void led_init(void)
 {
-    // Green (PA26)
+    // Green
     DL_GPIO_initDigitalOutput(LED_GREEN_IOMUX);
     DL_GPIO_clearPins(LED_GREEN_PORT, LED_GREEN_PIN);
     DL_GPIO_enableOutput(LED_GREEN_PORT, LED_GREEN_PIN);
 
-    // Yellow (PB24)
+    // Yellow
     DL_GPIO_initDigitalOutput(LED_YELLOW_IOMUX);
     DL_GPIO_clearPins(LED_YELLOW_PORT, LED_YELLOW_PIN);
     DL_GPIO_enableOutput(LED_YELLOW_PORT, LED_YELLOW_PIN);
 
-    // Red (PB9)
+    // Red
     DL_GPIO_initDigitalOutput(LED_RED_IOMUX);
     DL_GPIO_clearPins(LED_RED_PORT, LED_RED_PIN);
     DL_GPIO_enableOutput(LED_RED_PORT, LED_RED_PIN);

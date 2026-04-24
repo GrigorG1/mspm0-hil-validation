@@ -96,7 +96,7 @@ class HILClient:
         Returns:
             Tuple of (success: bool, payload: str)
             - ("OK 1") -> (True, "1")
-            - ("OK MSPM0_HIL_v1.0") -> (True, "MSPM0_HIL_v1.0")
+            - ("OK MSPM0_HIL_v1.1") -> (True, "MSPM0_HIL_v1.1")
             - ("E BAD_CMD") -> (False, "BAD_CMD")
         """
         if response.startswith("OK"):
